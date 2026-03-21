@@ -149,7 +149,7 @@ class RabbitMQService
     }
 
     /**
-     * 消费消息（仅用于独立 CLI 进程，禁止在 Swoole 协程中调用）
+     * 消费消息（用于 Worker 进程或独立 CLI 进程）
      *
      * @param string $queueName 队列名称
      * @param callable $callback 消息处理回调
@@ -157,10 +157,6 @@ class RabbitMQService
      */
     public static function consume(string $queueName, callable $callback): void
     {
-        if (self::isSwooleEnvironment()) {
-            throw new \RuntimeException('[RabbitMQ] consume() 仅用于独立 CLI 进程，不能在 Swoole 协程中调用');
-        }
-
         $queueConfig = RabbitMQConfig::getQueueConfig($queueName);
 
         if (empty($queueConfig)) {
@@ -172,8 +168,8 @@ class RabbitMQService
         $durable = $queueConfig['durable'] ?? true;
         $routingKey = $queueConfig['routing_key'] ?? $queueName;
 
-        // 消费者使用独立长连接
-        $connection = self::getConnection();
+        // 消费者使用独立长连接（强制使用简单连接，不检查环境）
+        $connection = self::forceSimpleConnection();
         $channel = null;
 
         try {
@@ -261,5 +257,40 @@ class RabbitMQService
         return extension_loaded('swoole')
             && class_exists(\Swoole\Coroutine::class)
             && \Swoole\Coroutine::getCid() > 0;
+    }
+
+    /**
+     * 强制使用简单连接（不使用连接池）
+     * 用于 Worker 进程，确保在协程上下文中也能正确使用
+     *
+     * @return AMQPStreamConnection
+     */
+    protected static function forceSimpleConnection(): AMQPStreamConnection
+    {
+        $pid = getmypid();
+        if (isset(self::$simpleConnections[$pid]) && self::$simpleConnections[$pid]->isConnected()) {
+            return self::$simpleConnections[$pid];
+        }
+
+        // 连接不存在或已失效，重建连接
+        try {
+            self::$simpleConnections[$pid]?->close();
+        } catch (\Exception $_) {
+            // 忽略关闭异常
+        }
+        unset(self::$simpleConnections[$pid]);
+
+        $config = RabbitMQConfig::getConnectionConfig();
+        self::$simpleConnections[$pid] = new AMQPStreamConnection(
+            $config['host'],
+            $config['port'],
+            $config['user'],
+            $config['password'],
+            $config['vhost'],
+            insist: false,
+            heartbeat: 60,
+        );
+
+        return self::$simpleConnections[$pid];
     }
 }
