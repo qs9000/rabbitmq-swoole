@@ -1,18 +1,18 @@
 {
-    "name": "yourname/rabbitmq-swoole",
-    "description": "RabbitMQ service for ThinkPHP with Swoole coroutine support",
+    "name": "qs9000/rabbitmq-swoole",
+    "description": "RabbitMQ service for ThinkPHP with think-swoole coroutine support",
     "type": "library",
     "keywords": ["rabbitmq", "swoole", "thinkphp", "queue"],
     "license": "MIT",
     "authors": [
         {
-            "name": "Your Name",
-            "email": "your.email@example.com"
+            "name": "qs9000",
+            "email": "pengshuiqing@163.com"
         }
     ],
     "require": {
-        "php": ">=7.4",
-        "ext-swoole": "*",
+        "php": ">=7.4",        
+        "topthink/think-swoole": "^4.1",
         "php-amqplib/php-amqplib": "^3.0"
     },
     "autoload": {
