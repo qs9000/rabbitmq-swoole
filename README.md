@@ -1,11 +1,12 @@
 # Think RabbitMQ Swoole
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PHP Version](https://img.shields.io/badge/php-%3E%3D7.4-brightgreen.svg)](https://www.php.net)
+[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.0-brightgreen.svg)](https://www.php.net)
 [![Swoole](https://img.shields.io/badge/swoole-%3E%3D4.5-orange.svg)](https://www.swoole.com)
-[![ThinkPHP](https://img.shields.io/badge/thinkphp-6.x-blue.svg)](https://www.thinkphp.cn)
+[![ThinkPHP](https://img.shields.io/badge/thinkphp-6.0%7C8.0-blue.svg)](https://www.thinkphp.cn)
+[![Think-Swoole](https://img.shields.io/badge/think--swoole-%5E4.1-green.svg)](https://github.com/top-think/think-swoole)
 
-为 ThinkPHP 8.x 集成 RabbitMQ 消息队列，支持 Swoole 协程环境，提供协程安全的连接池管理和自动消费者进程管理。
+为 ThinkPHP 6.x/8.x 集成 RabbitMQ 消息队列，支持 Swoole 协程环境，提供协程安全的连接池管理和自动消费者进程管理。
 
 ## ✨ 特性
 
@@ -15,6 +16,14 @@
 - ✅ **类型安全** - 完整的类型声明和接口约束
 - ✅ **配置驱动** - 灵活的配置管理，支持环境变量
 - ✅ **多环境适配** - 自动识别 Swoole 协程环境和 CLI 环境
+
+## 📦 系统要求
+
+- PHP >= 8.0
+- Swoole >= 4.5
+- ThinkPHP >= 6.0 或 >= 8.0
+- think-swoole >= 4.1
+- php-amqplib >= 3.0
 
 ## 📦 安装
 
