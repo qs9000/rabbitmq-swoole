@@ -56,8 +56,15 @@ class RabbitMQPool
                         $config['user'],
                         $config['password'],
                         $config['vhost'],
-                        insist: false,
-                        heartbeat: 60,
+                        false,
+                        'PLAIN',
+                        null,
+                        'en_US',
+                        3.0,
+                        3.0,
+                        null,
+                        true,
+                        60
                     );
                 } catch (\Throwable $e) {
                     self::$totalCreated--;

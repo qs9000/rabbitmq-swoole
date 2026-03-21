@@ -53,8 +53,15 @@ class RabbitMQService
             $config['user'],
             $config['password'],
             $config['vhost'],
-            insist: false,
-            heartbeat: 60,
+            false,
+            'PLAIN',
+            null,
+            'en_US',
+            3.0,
+            3.0,
+            null,
+            true,
+            60
         );
 
         return self::$simpleConnections[$pid];
@@ -287,8 +294,15 @@ class RabbitMQService
             $config['user'],
             $config['password'],
             $config['vhost'],
-            insist: false,
-            heartbeat: 60,
+            false,
+            'PLAIN',
+            null,
+            'en_US',
+            3.0,
+            3.0,
+            null,
+            true,
+            60
         );
 
         return self::$simpleConnections[$pid];
