@@ -54,13 +54,13 @@ class RabbitMQService
             $config['password'],
             $config['vhost'],
             false,
-            'PLAIN',
+            'AMQPLAIN',
             null,
             'en_US',
             3.0,
-            3.0,
+            130.0,
             null,
-            true,
+            false,
             60
         );
 
