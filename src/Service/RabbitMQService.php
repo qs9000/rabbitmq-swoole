@@ -136,7 +136,7 @@ class RabbitMQService
             $channel->basic_publish($msg, $exchangeName, $routingKey);
 
             return true;
-        } catch ( $e) {
+        } catch (\PhpAmqpLib\Exception\AMQPRuntimeException $e) {
             Log::error("[RabbitMQ] AMQP 错误: [{$queueName}] " . $e->getMessage());
             return false;
         } catch (\Exception $e) {
