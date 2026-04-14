@@ -136,7 +136,7 @@ class RabbitMQService
             $channel->basic_publish($msg, $exchangeName, $routingKey);
 
             return true;
-        } catch (\PhpAmqpLib\Exception\AMQPRuntimeException $e) {
+        } catch (\PhpAmqpLib\Exception\AMQPExceptionInterface $e) {
             Log::error("[RabbitMQ] AMQP 错误: [{$queueName}] " . $e->getMessage());
             return false;
         } catch (\Exception $e) {
@@ -301,11 +301,11 @@ class RabbitMQService
             $config['password'],
             $config['vhost'],
             false,
-            'PLAIN',
+            'AMQPLAIN',
             null,
             'en_US',
-            3.0,
-            3.0,
+            10.0,
+            10.0,
             null,
             true,
             60

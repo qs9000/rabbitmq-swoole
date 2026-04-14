@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace RabbitMQSwoole\Config;
 
 use think\facade\Config;
+use think\facade\Log;
 
 /**
  * RabbitMQ 配置读取类

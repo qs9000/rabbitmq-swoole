@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace RabbitMQSwoole\Service;
 
 use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Wire\AMQPTable;
 use RabbitMQSwoole\Config\RabbitMQConfig;
 use think\facade\Log;
 
@@ -53,9 +54,9 @@ class RabbitMQDelayService
             $routingKey = $queueConfig['routing_key'] ?? $queueName;
 
             // 声明延迟交换机（使用插件类型）
-            $exchangeArgs = [
-                self::DELAY_EXCHANGE_ARG => ['S', $queueConfig['exchange_type'] ?? 'direct'],
-            ];
+            $exchangeArgs = new AMQPTable([
+                self::DELAY_EXCHANGE_ARG => $queueConfig['exchange_type'] ?? 'direct',
+            ]);
 
             $channel->exchange_declare(
                 $exchangeName,
@@ -86,9 +87,9 @@ class RabbitMQDelayService
             $msg = new AMQPMessage($msgBody, [
                 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT,
                 'content_type' => 'application/json',
-                'application_headers' => [
-                    'x-delay' => ['I', $delaySeconds * 1000], // 毫秒
-                ],
+                'application_headers' => new AMQPTable([
+                    'x-delay' => $delaySeconds * 1000, // 毫秒
+                ]),
             ]);
 
             $channel->basic_publish($msg, $exchangeName, $routingKey);
@@ -151,9 +152,9 @@ class RabbitMQDelayService
             $connection = RabbitMQService::getConnection();
             $channel = $connection->channel();
 
-            $exchangeArgs = [
-                self::DELAY_EXCHANGE_ARG => ['S', $exchangeType],
-            ];
+            $exchangeArgs = new AMQPTable([
+                self::DELAY_EXCHANGE_ARG => $exchangeType,
+            ]);
 
             $channel->exchange_declare(
                 $exchangeName,
