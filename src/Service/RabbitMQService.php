@@ -86,10 +86,16 @@ class RabbitMQService
      * @param string $queueName 队列名称
      * @param array $message 消息内容
      * @param string $routingKey 路由键
+     * @param int $delaySeconds 延迟时间（秒），0表示立即发送
      * @return bool
      */
-    public static function publish(string $queueName, array $message, string $routingKey = ''): bool
+    public static function publish(string $queueName, array $message, string $routingKey = '', int $delaySeconds = 0): bool
     {
+        // 如果有延迟时间，使用延迟队列服务
+        if ($delaySeconds > 0) {
+            return RabbitMQDelayService::publishDelay($queueName, $message, $delaySeconds);
+        }
+
         $queueConfig = RabbitMQConfig::getQueueConfig($queueName);
 
         if (empty($queueConfig)) {
@@ -130,7 +136,7 @@ class RabbitMQService
             $channel->basic_publish($msg, $exchangeName, $routingKey);
 
             return true;
-        } catch (\PhpAmqpLib\Exception\AMQPException $e) {
+        } catch ( $e) {
             Log::error("[RabbitMQ] AMQP 错误: [{$queueName}] " . $e->getMessage());
             return false;
         } catch (\Exception $e) {

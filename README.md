@@ -13,6 +13,7 @@
 - ✅ **协程安全连接池** - 基于 `Swoole\ConnectionPool` 的连接池，协程间隔离
 - ✅ **自动连接泄漏检测** - 请求结束时自动检测并回收未归还的连接
 - ✅ **Worker 进程管理** - 自动注册和管理 RabbitMQ 消费者 Worker 进程
+- ✅ **延迟队列** - 基于死信队列（DLX）实现延迟消息功能
 - ✅ **类型安全** - 完整的类型声明和接口约束
 - ✅ **配置驱动** - 灵活的配置管理，支持环境变量
 - ✅ **多环境适配** - 自动识别 Swoole 协程环境和 CLI 环境
@@ -123,10 +124,14 @@ use RabbitMQSwoole\Service\RabbitMQService;
 // 发布消息到队列
 RabbitMQService::publish('file_log', [
     'action' => 'upload',
-    'tenant_id' => 'xxx',
-    'user_id' => 'xxx',
     'file_path' => '/path/to/file.pdf',
 ]);
+
+// 发送延迟消息（延迟 60 秒）
+RabbitMQService::publish('file_log', [
+    'action' => 'cleanup',
+    'file_id' => 'xxx',
+], '', 60);
 ```
 
 ### 创建消费者
@@ -318,7 +323,29 @@ Worker 进程内置了自动重试机制，支持指数退避：
 超过3次 → 记录告警并退出（Swoole 会自动重启进程）
 ```
 
-### 4. 连接泄漏监控
+### 4. 延迟队列使用
+
+延迟队列基于死信队列（DLX）实现：
+
+```php
+// 发送延迟消息
+RabbitMQService::publish('order_queue', [
+    'order_id' => '12345',
+    'action' => 'auto_cancel',
+], '', 300); // 延迟 5 分钟
+
+// 批量发送延迟消息
+use RabbitMQSwoole\Service\RabbitMQDelayService;
+
+RabbitMQDelayService::publishDelayBatch('reminder_queue', [
+    ['user_id' => 1, 'message' => '会议提醒'],
+    ['user_id' => 2, 'message' => '任务到期'],
+], 3600); // 延迟 1 小时
+```
+
+延迟消息会在过期后自动转发到目标队列，消费者无需特殊处理。
+
+### 5. 连接泄漏监控
 
 开启日志监控连接泄漏：
 
