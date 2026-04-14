@@ -13,7 +13,7 @@
 - ✅ **协程安全连接池** - 基于 `Swoole\ConnectionPool` 的连接池，协程间隔离
 - ✅ **自动连接泄漏检测** - 请求结束时自动检测并回收未归还的连接
 - ✅ **Worker 进程管理** - 自动注册和管理 RabbitMQ 消费者 Worker 进程
-- ✅ **延迟队列** - 基于死信队列（DLX）实现延迟消息功能
+- ✅ **延迟队列** - 基于 `rabbitmq_delayed_message_exchange` 插件实现延迟消息
 - ✅ **类型安全** - 完整的类型声明和接口约束
 - ✅ **配置驱动** - 灵活的配置管理，支持环境变量
 - ✅ **多环境适配** - 自动识别 Swoole 协程环境和 CLI 环境
@@ -325,7 +325,22 @@ Worker 进程内置了自动重试机制，支持指数退避：
 
 ### 4. 延迟队列使用
 
-延迟队列基于死信队列（DLX）实现：
+延迟队列基于 `rabbitmq_delayed_message_exchange` 插件实现。
+
+**安装插件：**
+
+```bash
+# 下载插件（根据 RabbitMQ 版本选择）
+wget https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/3.12.0/rabbitmq_delayed_message_exchange-3.12.0.ez
+
+# 复制到插件目录
+sudo cp rabbitmq_delayed_message_exchange-3.12.0.ez /usr/lib/rabbitmq/lib/rabbitmq_server-*/plugins/
+
+# 启用插件
+sudo rabbitmq-plugins enable rabbitmq_delayed_message_exchange
+```
+
+**使用延迟消息：**
 
 ```php
 // 发送延迟消息
@@ -343,7 +358,10 @@ RabbitMQDelayService::publishDelayBatch('reminder_queue', [
 ], 3600); // 延迟 1 小时
 ```
 
-延迟消息会在过期后自动转发到目标队列，消费者无需特殊处理。
+**配置说明：**
+- 使用延迟功能时，交换机类型会自动变为 `x-delayed-message`
+- 消息通过 `x-delay` 头指定延迟时间（毫秒）
+- 消费者无需特殊处理，消息到期后自动投递到队列
 
 ### 5. 连接泄漏监控
 
