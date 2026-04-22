@@ -2,7 +2,12 @@
     "name": "qs9000/rabbitmq-swoole",
     "description": "RabbitMQ service for ThinkPHP with think-swoole coroutine support",
     "type": "library",
-    "keywords": ["rabbitmq", "swoole", "thinkphp", "queue"],
+    "keywords": [
+        "rabbitmq",
+        "swoole",
+        "thinkphp",
+        "queue"
+    ],
     "license": "MIT",
     "authors": [
         {
@@ -19,6 +24,11 @@
     "autoload": {
         "psr-4": {
             "RabbitMQSwoole\\": "src/"
+        }
+    },
+    "extra": {
+        "think": {
+            "config": "src/Config/rabbitmq.php"
         }
     },
     "minimum-stability": "stable",
