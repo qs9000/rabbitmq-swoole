@@ -29,19 +29,8 @@
     "autoload": {
         "psr-4": {
             "RabbitMQSwoole\\": "src/"
-        },
-        "classmap": [
-            "src/Command/"
-        ]
+        }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true,
-    "scripts": {
-        "post-install-cmd": [
-            "echo '执行以下命令发布 RabbitMQ 配置: php think rabbitmq:publish'"
-        ],
-        "post-update-cmd": [
-            "echo 'RabbitMQ 插件已更新，如需重新发布配置请执行: php think rabbitmq:publish --force'"
-        ]
-    }
+    "prefer-stable": true
 }

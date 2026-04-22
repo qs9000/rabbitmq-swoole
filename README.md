@@ -1,54 +1,47 @@
 # Think RabbitMQ Swoole
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.0-brightgreen.svg)](https://www.php.net)
-[![Swoole](https://img.shields.io/badge/swoole-%3E%3D4.5-orange.svg)](https://www.swoole.com)
+[![PHP](https://img.shields.io/badge/php-%3E%3D8.0-brightgreen.svg)](https://www.php.net)
 [![ThinkPHP](https://img.shields.io/badge/thinkphp-6.0%7C8.0-blue.svg)](https://www.thinkphp.cn)
-[![Think-Swoole](https://img.shields.io/badge/think--swoole-%5E4.1-green.svg)](https://github.com/top-think/think-swoole)
 
-为 ThinkPHP 6.x/8.x 集成 RabbitMQ 消息队列，支持 Swoole 协程环境，提供协程安全的连接池管理和自动消费者进程管理。
+为 ThinkPHP 集成 RabbitMQ 消息队列，支持 Swoole 协程环境，提供协程安全的连接池和自动消费者进程管理。
 
-## ✨ 特性
+## 特性
 
-- ✅ **协程安全连接池** - 基于 `Swoole\ConnectionPool` 的连接池，协程间隔离
-- ✅ **自动连接泄漏检测** - 请求结束时自动检测并回收未归还的连接
-- ✅ **Worker 进程管理** - 自动注册和管理 RabbitMQ 消费者 Worker 进程
-- ✅ **延迟队列** - 基于 `rabbitmq_delayed_message_exchange` 插件实现延迟消息
-- ✅ **类型安全** - 完整的类型声明和接口约束
-- ✅ **配置驱动** - 灵活的配置管理，支持环境变量
-- ✅ **多环境适配** - 自动识别 Swoole 协程环境和 CLI 环境
+- 协程安全连接池（基于 Swoole\ConnectionPool）
+- 自动连接泄漏检测与回收
+- Worker 进程自动注册与管理
+- 延迟消息支持（基于 rabbitmq_delayed_message_exchange 插件）
+- 消息确认与重试机制
 
-## 📦 系统要求
+## 环境要求
 
 - PHP >= 8.0
-- Swoole >= 4.5
-- ThinkPHP >= 6.0 或 >= 8.0
+- ThinkPHP 6.0 / 8.0
 - think-swoole >= 4.1
-- php-amqplib >= 3.0
+- php-amqplib >= 3.7
+- Swoole >= 4.5
 
-## 📦 安装
+## 安装
 
 ```bash
 composer require qs9000/rabbitmq-swoole
 ```
 
-## 🚀 快速开始
-
-### 1. 发布配置文件
-
-将扩展包的配置文件复制到你的项目：
+安装完成后，执行以下命令发布配置文件：
 
 ```bash
-cp vendor/qs9000/rabbitmq-swoole/src/Config/rabbitmq.php config/rabbitmq.php
+php think rabbitmq:publish
 ```
 
-### 2. 配置 RabbitMQ 连接
+## 快速开始
+
+### 1. 配置 RabbitMQ
 
 编辑 `config/rabbitmq.php`：
 
 ```php
 return [
-    // RabbitMQ 连接配置
     'connection' => [
         'host'     => env('RABBITMQ_HOST', '127.0.0.1'),
         'port'     => (int) env('RABBITMQ_PORT', 5672),
@@ -57,77 +50,73 @@ return [
         'vhost'    => env('RABBITMQ_VHOST', '/'),
     ],
 
-    // 队列配置
     'queue' => [
         'file_log' => [
-            'name'          => 'file.log.queue',      // 队列名称
-            'exchange'      => 'file.log.exchange',   // 交换机名称
-            'exchange_type' => 'direct',               // 交换机类型
-            'routing_key'   => 'file.log',             // 路由键
-            'durable'       => true,                   // 是否持久化
+            'name'          => 'file_log',
+            'exchange'      => 'amq.direct',
+            'exchange_type' => 'direct',
+            'routing_key'   => 'file_log',
+            'durable'       => true,
         ],
     ],
 ];
 ```
 
-### 3. 配置 Swoole
+### 2. 配置 Swoole
 
-编辑 `config/swoole.php`，添加连接池和 Worker 配置：
+编辑 `config/swoole.php`：
 
 ```php
 return [
     // 连接池配置
     'pool' => [
         'rabbitmq' => [
-            'enable'     => true,    // 是否启用连接池
-            'max_active' => 10,      // 最大连接数
+            'enable'     => true,
+            'max_active' => 10,
         ],
     ],
 
-    // RabbitMQ Worker 进程配置
+    // RabbitMQ Worker 配置
     'rabbitmq_worker' => [
-        'enable' => true,  // 是否启用 Worker 进程
+        'enable' => true,
         'queues' => [
             'file_log' => \app\queue\consumer\FileLog::class,
         ],
     ],
 
-    // 重置器配置
+    // 重置器（自动回收泄漏连接）
     'resetters' => [
         \RabbitMQSwoole\Resetter\RabbitMQResetter::class,
     ],
 ];
 ```
 
-### 4. 注册事件监听器
+### 3. 注册事件监听
 
 编辑 `config/event.php`：
 
 ```php
 return [
-    'listen' => [
-        // ...
-    ],
     'subscribe' => [
         \RabbitMQSwoole\Listener\SwooleInitListener::class,
     ],
 ];
 ```
 
-## 📝 使用方法
+## 使用方法
 
 ### 发布消息
 
 ```php
 use RabbitMQSwoole\Service\RabbitMQService;
 
-// 发布消息到队列
+// 普通消息
 RabbitMQService::publish('file_log', [
     'action' => 'upload',
     'file_path' => '/path/to/file.pdf',
 ]);
 
-// 发送延迟消息（延迟 60 秒）
+// 延迟消息（延迟 60 秒）
 RabbitMQService::publish('file_log', [
     'action' => 'cleanup',
     'file_id' => 'xxx',
@@ -136,15 +125,12 @@ RabbitMQService::publish('file_log', [
 
 ### 创建消费者
 
-创建消费者类，实现 `ConsumerInterface` 接口：
-
 ```php
 <?php
 namespace app\queue\consumer;
 
 use RabbitMQSwoole\Contract\ConsumerInterface;
 use PhpAmqpLib\Message\AMQPMessage;
-use think\facade\Log;
 
 class FileLog implements ConsumerInterface
 {
@@ -157,199 +143,26 @@ class FileLog implements ConsumerInterface
             $data = json_decode($message->body, true);
 
             // 处理业务逻辑
-            Log::info('处理文件日志消息', $data);
+            $this->process($data);
 
             // 确认消息
             $channel->basic_ack($deliveryTag);
         } catch (\Exception $e) {
-            Log::error('处理消息失败', [
-                'error' => $e->getMessage(),
-                'data' => $message->body,
-            ]);
-
-            // 拒绝消息并重新入队
+            // 处理失败，拒绝并重新入队
             $channel->basic_nack($deliveryTag, false, true);
         }
     }
-}
-```
 
-### 独立 CLI 消费进程（可选）
-
-如果不想使用 Swoole Worker，也可以独立启动消费者进程：
-
-```php
-// 创建 console 命令
-namespace app\command;
-
-use think\console\Command;
-use think\console\Input;
-use think\console\Output;
-use RabbitMQSwoole\Service\RabbitMQService;
-use app\queue\consumer\FileLog;
-
-class RabbitMQConsumer extends Command
-{
-    protected function configure()
+    private function process(array $data): void
     {
-        $this->setName('rabbitmq:consume')
-            ->setDescription('启动 RabbitMQ 消费者进程');
-    }
-
-    protected function execute(Input $input, Output $output)
-    {
-        $output->writeln('开始消费队列...');
-
-        RabbitMQService::consume('file_log', function ($message) {
-            $consumer = new FileLog();
-            $consumer->handle($message);
-        });
+        // 业务处理逻辑
     }
 }
 ```
 
-启动命令：
-
-```bash
-php think rabbitmq:consume
-```
-
-## 🏗️ 架构设计
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      ThinkPHP + Swoole                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌──────────────┐      ┌─────────────────────────────────┐  │
-│  │ HTTP Worker  │─────▶│   RabbitMQService::publish()    │  │
-│  │   (协程)      │      │   ┌─────────────────────────┐  │  │
-│  └──────────────┘      │   │   RabbitMQPool (连接池)   │  │
-│                        │   └─────────────────────────┘  │  │
-│                        │          ↓                      │  │
-│                        │   AMQPStreamConnection          │  │
-│                        └─────────────────────────────────┘  │
-│                                                               │
-│  ┌──────────────────┐      ┌─────────────────────────────────┐│
-│  │ Custom Worker    │─────▶│  RabbitMQService::consume()     ││
-│  │   (非协程)        │      │  - 长连接监听                   ││
-│  │  - 消息消费       │      │  - 信号处理 (SIGTERM/SIGINT)   ││
-│  │  - 自动重启       │      │  - 指数退避重试                 ││
-│  └──────────────────┘      └─────────────────────────────────┘│
-│                                                               │
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │ SwooleInitListener                                       ││
-│  │   - swoole.init: 注册 Worker 进程                        ││
-│  │   - swoole.workerStart: 初始化连接池                    ││
-│  │   - swoole.beforeWorkerStop: 关闭连接池                 ││
-│  └──────────────────────────────────────────────────────────┘│
-│                                                               │
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │ RabbitMQResetter (请求结束)                              ││
-│  │   - 检测连接泄漏                                         ││
-│  │   - 自动回收未归还连接                                   ││
-│  └──────────────────────────────────────────────────────────┘│
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## 📋 配置说明
-
-### 连接池配置
-
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| enable | bool | true | 是否启用连接池 |
-| max_active | int | 10 | 最大连接数 |
-
-### Worker 进程配置
-
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| enable | bool | false | 是否启用 Worker 进程 |
-| queues | array | [] | 队列与消费者映射 |
-
-### 队列配置
-
-| 配置项 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| name | string | 是 | 队列名称 |
-| exchange | string | 是 | 交换机名称 |
-| exchange_type | string | 否 | 交换机类型 (direct/topic/fanout) |
-| routing_key | string | 否 | 路由键 |
-| durable | bool | 否 | 是否持久化 |
-
-## 🔒 最佳实践
-
-### 1. 消息确认
+### 批量发送延迟消息
 
 ```php
-public function handle(AMQPMessage $message): void
-{
-    $channel = $message->get('channel');
-    $deliveryTag = $message->get('delivery_tag');
-
-    try {
-        // 处理业务逻辑
-        $this->processMessage($message);
-
-        // 处理成功，确认消息
-        $channel->basic_ack($deliveryTag);
-    } catch (\Exception $e) {
-        // 处理失败，拒绝消息并重新入队
-        $channel->basic_nack($deliveryTag, false, true);
-        throw $e;
-    }
-}
-```
-
-### 2. 连接释放
-
-```php
-$connection = RabbitMQService::getConnection();
-// 使用连接...
-// 自动释放（推荐）
-RabbitMQService::releaseConnection($connection);
-```
-
-### 3. 错误重试
-
-Worker 进程内置了自动重试机制，支持指数退避：
-
-```
-第1次异常 → 等待 2 秒重试
-第2次异常 → 等待 4 秒重试
-第3次异常 → 等待 8 秒重试
-超过3次 → 记录告警并退出（Swoole 会自动重启进程）
-```
-
-### 4. 延迟队列使用
-
-延迟队列基于 `rabbitmq_delayed_message_exchange` 插件实现。
-
-**安装插件：**
-
-```bash
-# 下载插件（根据 RabbitMQ 版本选择）
-wget https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/3.12.0/rabbitmq_delayed_message_exchange-3.12.0.ez
-
-# 复制到插件目录
-sudo cp rabbitmq_delayed_message_exchange-3.12.0.ez /usr/lib/rabbitmq/lib/rabbitmq_server-*/plugins/
-
-# 启用插件
-sudo rabbitmq-plugins enable rabbitmq_delayed_message_exchange
-```
-
-**使用延迟消息：**
-
-```php
-// 发送延迟消息
-RabbitMQService::publish('order_queue', [
-    'order_id' => '12345',
-    'action' => 'auto_cancel',
-], '', 300); // 延迟 5 分钟
-
-// 批量发送延迟消息
 use RabbitMQSwoole\Service\RabbitMQDelayService;
 
 RabbitMQDelayService::publishDelayBatch('reminder_queue', [
@@ -358,117 +171,65 @@ RabbitMQDelayService::publishDelayBatch('reminder_queue', [
 ], 3600); // 延迟 1 小时
 ```
 
-**配置说明：**
-- 使用延迟功能时，交换机类型会自动变为 `x-delayed-message`
-- 消息通过 `x-delay` 头指定延迟时间（毫秒）
-- 消费者无需特殊处理，消息到期后自动投递到队列
+## 延迟队列
 
-### 5. 连接泄漏监控
+延迟队列基于 `rabbitmq_delayed_message_exchange` 插件实现。
 
-开启日志监控连接泄漏：
+### 安装插件
 
-```php
-// config/swoole.php
-'log' => [
-    'level' => \think\facade\Log::DEBUG,
-],
-```
-
-每次请求结束时会记录连接池状态，如果检测到连接泄漏会输出警告：
-
-```
-[RabbitMQResetter] 检测到连接泄漏 {
-    "pool": "active",
-    "max_size": 10,
-    "total_created": 5,
-    "borrowed_in_coroutine": 1
-}
-```
-
-## 🐛 故障排查
-
-### 问题 1：连接获取失败
-
-**错误信息**：`[RabbitMQPool] 获取连接失败`
-
-**解决方案**：
-1. 检查 RabbitMQ 服务是否运行
-2. 检查连接配置是否正确
-3. 增加连接池大小 (`max_active`)
-
-### 问题 2：连接泄漏
-
-**错误信息**：`[RabbitMQResetter] 检测到连接泄漏`
-
-**解决方案**：
-1. 确保每次 `getConnection()` 后都有对应的 `releaseConnection()`
-2. 检查异常处理中是否有未释放的连接
-3. 使用 `try-finally` 确保连接释放
-
-### 问题 3：Worker 进程崩溃
-
-**错误信息**：`[RabbitMQ] Worker 异常退出`
-
-**解决方案**：
-1. 检查消费者类是否正确实现 `ConsumerInterface`
-2. 查看详细错误日志
-3. 检查 RabbitMQ 队列配置是否正确
-
-### 问题 4：自动加载失败
-
-**错误信息**：`Class 'RabbitMQSwoole\...' not found`
-
-**解决方案**：
 ```bash
-composer dump-autoload
-php think clear
+# 启用插件
+rabbitmq-plugins enable rabbitmq_delayed_message_exchange
 ```
 
-## 📊 性能优化
-
-### 1. 连接池调优
-
-根据实际并发量调整连接池大小：
+### 使用示例
 
 ```php
-// 高并发场景
-'max_active' => 50,
-
-// 低并发场景
-'max_active' => 5,
+// 延迟 5 分钟
+RabbitMQService::publish('order_queue', [
+    'order_id' => '12345',
+    'action' => 'auto_cancel',
+], '', 300);
 ```
 
-### 2. QoS 设置
+## 架构说明
 
-消费者 QoS (Quality of Service) 设置已在 `consume()` 方法中默认配置为单条处理：
+```
+HTTP Worker (协程)
+└── RabbitMQPool (连接池)
+    └── publish() 发布消息
 
-```php
-$channel->basic_qos(0, 1, false);
+Custom Worker (非协程)
+└── consume() 长连接消费
+    └── 自动重试 (指数退避)
+
+请求结束时
+└── RabbitMQResetter (回收泄漏连接)
 ```
 
-可根据需要调整预取数量。
+## Worker 自动重试机制
 
-### 3. 心跳配置
-
-连接心跳默认设置为 60 秒：
-
-```php
-heartbeat: 60,
+```
+第 1 次异常 → 等待 2 秒重试
+第 2 次异常 → 等待 4 秒重试
+第 3 次异常 → 等待 8 秒重试
+超过 3 次 → 记录告警并退出
 ```
 
-根据网络状况调整此值。
+## 故障排查
 
-## 🤝 贡献
+### 连接获取失败
 
-欢迎提交 Issue 和 Pull Request！
+检查 RabbitMQ 服务和连接配置，确保连接池大小足够。
 
-## 📄 License
+### 连接泄漏警告
+
+确保每次 `getConnection()` 后都有 `releaseConnection()`，或使用 `try-finally` 包裹。
+
+### Worker 进程崩溃
+
+检查消费者类是否正确实现 `ConsumerInterface`，查看日志中的具体错误信息。
+
+## License
 
 MIT License
-
-## 🔗 相关链接
-
-- [RabbitMQ 官方文档](https://www.rabbitmq.com/documentation.html)
-- [php-amqplib 文档](https://github.com/php-amqplib/php-amqplib)
-- [Swoole 文档](https://wiki.swoole.com/)
-- [ThinkPHP 8.x 文档](https://doc.thinkphp.cn/v8_0)
