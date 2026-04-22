@@ -16,16 +16,6 @@
         "topthink/think-swoole": "^4.1",
         "php-amqplib/php-amqplib": "^3.7.4"
     },
-    "extra": {
-        "think": {
-            "services": [
-                "RabbitMQSwoole\\Service\\RabbitMQServiceProvider"
-            ],
-            "config": {
-                "rabbitmq": "src/Config/rabbitmq.php"
-            }
-        }
-    },
     "autoload": {
         "psr-4": {
             "RabbitMQSwoole\\": "src/"

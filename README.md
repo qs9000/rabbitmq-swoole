@@ -28,10 +28,10 @@
 composer require qs9000/rabbitmq-swoole
 ```
 
-安装完成后，执行以下命令发布配置文件：
+安装后，复制配置文件到项目：
 
 ```bash
-php think rabbitmq:publish
+cp vendor/qs9000/rabbitmq-swoole/src/Config/rabbitmq.php config/rabbitmq.php
 ```
 
 ## 快速开始
