@@ -19,7 +19,7 @@
     "extra": {
         "think": {
             "services": [
-                "RabbitMQSwoole\\Service\\RabbitMQService"
+                "RabbitMQSwoole\\Service\\RabbitMQServiceProvider"
             ],
             "config": {
                 "rabbitmq": "src/Config/rabbitmq.php"
