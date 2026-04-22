@@ -197,8 +197,8 @@ class RabbitMQService
             $channel->queue_declare($queueConfig['name'], false, $durable, false, false);
             $channel->queue_bind($queueConfig['name'], $exchangeName, $routingKey);
 
-            // QoS: prefetch_size=0(无限制), prefetch_count=1(单条处理), global=false(仅当前channel)
-            $channel->basic_qos(0, 1, false);
+            // QoS: prefetch_size=0(无限制), prefetch_count=10(批量处理), global=false(仅当前channel)
+            $channel->basic_qos(0, 10, false);
 
             $channel->basic_consume(
                 $queueConfig['name'],
@@ -229,7 +229,7 @@ class RabbitMQService
                 // 使用非阻塞超时以便及时响应信号
                 while (!$stop) {
                     try {
-                        $channel->wait(null, true, 5); // 5秒超时
+                        $channel->wait(null, false, 5); // 5秒超时，非阻塞模式
                     } catch (\PhpAmqpLib\Exception\AMQPTimeoutException $e) {
                         // 超时正常，继续循环检查信号
                     }
@@ -237,7 +237,7 @@ class RabbitMQService
             } else {
                 while (true) {
                     try {
-                        $channel->wait(null, true, 5); // 5秒超时
+                        $channel->wait(null, false, 5); // 5秒超时，非阻塞模式
                     } catch (\PhpAmqpLib\Exception\AMQPTimeoutException $e) {
                         // 超时正常，继续循环
                     }
