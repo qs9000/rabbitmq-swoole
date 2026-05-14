@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace RabbitMQSwoole\Service;
@@ -20,19 +21,33 @@ class RabbitMQService
     private static array $simpleConnections = [];
 
     /**
+     * 检测是否在 Swoole 协程环境中
+     *
+     * 注意：Swoole 的 Custom Worker 进程虽然加载了 swoole 扩展，但不在协程上下文
+     *
+     * @return bool
+     */
+    protected static function isSwooleEnvironment(): bool
+    {
+        return extension_loaded('swoole')
+            && class_exists(\Swoole\Coroutine::class)
+            && \Swoole\Coroutine::getCid() > 0;
+    }
+
+    /**
      * 获取连接（协程安全）
      *
      * @return AMQPStreamConnection
      */
     public static function getConnection(): AMQPStreamConnection
     {
-        // Swoole 环境下使用连接池
+        // 检查是否在 Swoole 协程环境中
         if (self::isSwooleEnvironment()) {
             return RabbitMQPool::getConnection();
         }
 
-        // 非 Swoole 环境（CLI 消费进程）使用简单连接
-        // 使用进程 ID 作为键，确保多进程环境下隔离
+        // 不在协程环境中，使用简单的进程级连接
+        // 这种情况可能会出现在异常处理程序或其他非协程上下文
         $pid = getmypid();
         if (isset(self::$simpleConnections[$pid]) && self::$simpleConnections[$pid]->isConnected()) {
             return self::$simpleConnections[$pid];
@@ -47,21 +62,23 @@ class RabbitMQService
         unset(self::$simpleConnections[$pid]);
 
         $config = RabbitMQConfig::getConnectionConfig();
+        
+        // 创建连接
         self::$simpleConnections[$pid] = new AMQPStreamConnection(
             $config['host'],
             $config['port'],
             $config['user'],
             $config['password'],
             $config['vhost'],
-            false,
+            false, // insist
             'AMQPLAIN',
             null,
             'en_US',
-            3.0,
-            130.0,
-            null,
-            false,
-            60
+            3.0,      // connect timeout
+            30.0,     // read write timeout
+            null,     // context
+            false,    // keep alive
+            60        // heartbeat
         );
 
         return self::$simpleConnections[$pid];
@@ -75,9 +92,11 @@ class RabbitMQService
      */
     public static function releaseConnection(?AMQPStreamConnection $connection): void
     {
-        if (self::isSwooleEnvironment()) {
+        // 只有在 Swoole 协程环境中才使用连接池
+        if (self::isSwooleEnvironment() && $connection !== null) {
             RabbitMQPool::returnConnection($connection);
         }
+        // 在非协程环境中，连接是进程级的，不需要归还到连接池
     }
 
     /**
@@ -91,6 +110,15 @@ class RabbitMQService
      */
     public static function publish(string $queueName, array $message, string $routingKey = '', int $delaySeconds = 0): bool
     {
+        // 根据项目规范，异常处理程序可能运行在非协程上下文中
+        // 检查当前是否在协程环境中，如果不是，可以选择跳过或记录警告
+        if (!self::isSwooleEnvironment()) {
+            // 如果当前不在协程环境中（例如在异常处理程序中）
+            // 我们可以记录一条警告，但不尝试建立连接以避免错误
+            Log::warning("尝试在非协程环境中发布消息到RabbitMQ，操作已取消: {$queueName}");
+            return false;
+        }
+
         // 如果有延迟时间，使用延迟队列服务
         if ($delaySeconds > 0) {
             return RabbitMQDelayService::publishDelay($queueName, $message, $delaySeconds);
@@ -138,6 +166,10 @@ class RabbitMQService
             return true;
         } catch (\PhpAmqpLib\Exception\AMQPExceptionInterface $e) {
             Log::error("[RabbitMQ] AMQP 错误: [{$queueName}] " . $e->getMessage());
+            return false;
+        } catch (\Swoole\Error $e) {
+            // 特别捕获 Swoole 错误，如 "API must be called in the coroutine"
+            Log::error("[RabbitMQ] Swoole 错误: [{$queueName}] " . $e->getMessage());
             return false;
         } catch (\Exception $e) {
             Log::error("[RabbitMQ] 未知错误: [{$queueName}] " . $e->getMessage());
@@ -259,20 +291,6 @@ class RabbitMQService
     }
 
     /**
-     * 检测是否在 Swoole 协程环境中
-     *
-     * 注意：Swoole 的 Custom Worker 进程虽然加载了 swoole 扩展，但不在协程上下文
-     *
-     * @return bool
-     */
-    protected static function isSwooleEnvironment(): bool
-    {
-        return extension_loaded('swoole')
-            && class_exists(\Swoole\Coroutine::class)
-            && \Swoole\Coroutine::getCid() > 0;
-    }
-
-    /**
      * 强制使用简单连接（不使用连接池）
      * 用于 Worker 进程，确保在协程上下文中也能正确使用
      *
@@ -292,7 +310,7 @@ class RabbitMQService
             // 忽略关闭异常
         }
         unset(self::$simpleConnections[$pid]);
-
+        
         $config = RabbitMQConfig::getConnectionConfig();
         self::$simpleConnections[$pid] = new AMQPStreamConnection(
             $config['host'],
@@ -300,14 +318,14 @@ class RabbitMQService
             $config['user'],
             $config['password'],
             $config['vhost'],
-            false,
+            false, // 设置为非阻塞模式
             'AMQPLAIN',
             null,
             'en_US',
             10.0,
             10.0,
             null,
-            true,
+            false,
             60
         );
 
