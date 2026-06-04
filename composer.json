@@ -29,7 +29,7 @@
     "extra": {
         "think": {
             "config": {
-                "rabbitmq": "RabbitMQSwoole\\Config\\rabbitmq.php"
+                "rabbitmq": "src/Config/rabbitmq.php"
             }
         }
     },
